@@ -426,11 +426,25 @@ document.getElementById('hbg').addEventListener('click', () => {
     document.getElementById('navLinks').classList.toggle('open');
 });
 
-document.getElementById('inqForm').addEventListener('submit', function(e) {
+document.getElementById('inqForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    this.style.display = 'none';
-    document.getElementById('successScreen').style.display = 'block';
-    window.scrollTo({ top: document.querySelector('.inq-form-card').offsetTop - 80, behavior:'smooth' });
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    try {
+        const res = await fetch('https://formspree.io/f/mvzndqbo', {
+            method: 'POST', body: new FormData(this),
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            this.style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            window.scrollTo({ top: document.querySelector('.inq-form-card').offsetTop - 80, behavior: 'smooth' });
+        } else {
+            const j = await res.json();
+            alert(j.errors ? j.errors.map(e => e.message).join('\n') : 'Something went wrong. Please try again.');
+            btn.disabled = false; btn.textContent = 'Submit My Inquiry ▶';
+        }
+    } catch { alert('Network error — please check your connection and try again.'); btn.disabled = false; btn.textContent = 'Submit My Inquiry ▶'; }
 });
 </script>
 </body>

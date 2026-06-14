@@ -580,13 +580,13 @@
                 <p class="cform-sub">Fill this out and we'll get back to you within a couple hours. Have a lot of detail? <a href="inquiry.html" style="color:var(--accent)">Use our full inquiry form.</a></p>
                 <form class="form" id="cForm" method="POST" action="https://formspree.io/f/mvzndqbo">
                     <div class="frow">
-                        <div class="fg"><label>Your Name *</label><input type="text" placeholder="John Smith" required></div>
-                        <div class="fg"><label>Phone Number *</label><input type="tel" placeholder="(513) 555-0000" required></div>
+                        <div class="fg"><label>Your Name *</label><input type="text" name="name" placeholder="John Smith" required></div>
+                        <div class="fg"><label>Phone Number *</label><input type="tel" name="phone" placeholder="(513) 555-0000" required></div>
                     </div>
-                    <div class="fg"><label>Email Address</label><input type="email" placeholder="john@example.com"></div>
+                    <div class="fg"><label>Email Address</label><input type="email" name="email" placeholder="john@example.com"></div>
                     <div class="fg">
                         <label>Service Needed *</label>
-                        <select required>
+                        <select name="service" required>
                             <option value="" disabled selected>Select a service&hellip;</option>
                             <option>Junk Removal / Property Cleanout</option>
                             <option>Dump Run</option>
@@ -597,8 +597,8 @@
                             <option>Not Sure &mdash; Need Help Deciding</option>
                         </select>
                     </div>
-                    <div class="fg"><label>Your City / Neighborhood *</label><input type="text" placeholder="e.g. Anderson Township" required></div>
-                    <div class="fg"><label>Describe the Job</label><textarea placeholder="What needs to go, how much, where it is — the more detail, the better."></textarea></div>
+                    <div class="fg"><label>Your City / Neighborhood *</label><input type="text" name="city" placeholder="e.g. Anderson Township" required></div>
+                    <div class="fg"><label>Describe the Job</label><textarea name="description" placeholder="What needs to go, how much, where it is — the more detail, the better."></textarea></div>
                     <button type="submit" class="btn-primary" style="width:100%;justify-content:center;">Send My Request &rarr;</button>
                 </form>
             </div>
@@ -786,17 +786,26 @@ function qBuildResult() {
             <p style="color:#666;font-size:.8rem;margin-bottom:1.5rem">Fill out the quick form below or <a href="inquiry.html" style="color:var(--accent)">submit a full inquiry</a> for more detail.</p>
         </div>
         <form class="form" id="qForm" method="POST" action="https://formspree.io/f/mvzndqbo">
+            <input type="hidden" name="quiz_result" value="${r.title}">
             <div class="frow">
-                <div class="fg"><label>Your Name *</label><input type="text" placeholder="John Smith" required></div>
-                <div class="fg"><label>Phone Number *</label><input type="tel" placeholder="(513) 555-0000" required></div>
+                <div class="fg"><label>Your Name *</label><input type="text" name="name" placeholder="John Smith" required></div>
+                <div class="fg"><label>Phone Number *</label><input type="tel" name="phone" placeholder="(513) 555-0000" required></div>
             </div>
-            <div class="fg"><label>City / Neighborhood</label><input type="text" placeholder="e.g. Anderson Township"></div>
-            <div class="fg"><label>Tell Us More (optional)</label><textarea placeholder="Any extra details — size, access, what you've got&hellip;"></textarea></div>
+            <div class="fg"><label>City / Neighborhood</label><input type="text" name="city" placeholder="e.g. Anderson Township"></div>
+            <div class="fg"><label>Tell Us More (optional)</label><textarea name="description" placeholder="Any extra details — size, access, what you've got&hellip;"></textarea></div>
             <button type="submit" class="btn-primary" style="width:100%;justify-content:center;margin-top:.25rem">Get My Free Quote &rarr;</button>
         </form>
         <button class="btn-back" onclick="qRestart()" style="display:block;width:100%;text-align:center;margin-top:1.25rem">&circlearrowleft; Start Over</button>
     `;
-    document.getElementById('qForm').addEventListener('submit', e => { e.preventDefault(); showToast(); e.target.reset(); });
+    document.getElementById('qForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type="submit"]');
+        btn.disabled = true; btn.textContent = 'Sending…';
+        await fsSubmit(this,
+            () => { showToast(); this.reset(); btn.disabled = false; btn.innerHTML = 'Get My Free Quote &rarr;'; },
+            ()  => { btn.disabled = false; btn.innerHTML = 'Get My Free Quote &rarr;'; }
+        );
+    });
 }
 
 function qShow(n) {
@@ -841,7 +850,30 @@ document.querySelectorAll('#qs0 .qopt').forEach(btn => {
     });
 });
 document.getElementById('qnext0').addEventListener('click', () => qNext(0));
-document.getElementById('cForm').addEventListener('submit', e => { e.preventDefault(); showToast(); e.target.reset(); });
+document.getElementById('cForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    await fsSubmit(this,
+        () => { showToast(); this.reset(); btn.disabled = false; btn.innerHTML = 'Send My Request &rarr;'; },
+        ()  => { btn.disabled = false; btn.innerHTML = 'Send My Request &rarr;'; }
+    );
+});
+
+async function fsSubmit(form, onSuccess, onError) {
+    try {
+        const res = await fetch('https://formspree.io/f/mvzndqbo', {
+            method: 'POST', body: new FormData(form),
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) { onSuccess(); }
+        else {
+            const j = await res.json();
+            alert(j.errors ? j.errors.map(e => e.message).join('\n') : 'Something went wrong. Please try again.');
+            onError();
+        }
+    } catch { alert('Network error — please check your connection and try again.'); onError(); }
+}
 
 function showToast() {
     const t = document.getElementById('toast');
